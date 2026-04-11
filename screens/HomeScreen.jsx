@@ -7,13 +7,14 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useDB } from "../storage/db";
+import { colors, radius, font } from "../constants/theme";
 
 export default function HomeScreen({ navigation }) {
-  const { getStreak, getDecks } = useDB();
+  const { getStreak } = useDB();
   const [streak, setStreak] = useState(0);
-  const [decksCount, setDecksCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
+  // Reload data every time the screen comes into focus
   useEffect(() => {
     loadData();
   }, []);
@@ -21,9 +22,7 @@ export default function HomeScreen({ navigation }) {
   const loadData = async () => {
     try {
       const streakRow = await getStreak();
-      const decks = await getDecks();
       setStreak(streakRow?.currentStreak ?? 0);
-      setDecksCount(decks.length);
     } catch (error) {
       console.error("HomeScreen loadData failed:", error);
     } finally {
@@ -34,23 +33,47 @@ export default function HomeScreen({ navigation }) {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <Text>Streak: {streak}</Text>
-      <Text>Decks: {decksCount}</Text>
+    <View style={[styles.container, { paddingTop: 220 }]}>
+      {/* Streak badge */}
+      <View style={styles.streakBadge}>
+        <Text style={styles.streakEmoji}>🔥</Text>
+        <Text style={styles.streakText}>
+          {/* Show days count if streak exists, otherwise prompt to start */}
+          {streak > 0
+            ? `Streak: ${streak} day${streak === 1 ? "" : "s"}!`
+            : "No streak yet — start studying!"}
+        </Text>
+      </View>
 
-      <TouchableOpacity onPress={() => navigation.navigate("CreateCard")}>
-        <Text>Create Flashcards</Text>
-      </TouchableOpacity>
+      {/* Logo / title area */}
+      <View style={styles.logoArea}>
+        <Text style={styles.logoEmoji}>🧠</Text>
+        <Text style={styles.title}>FlashMind</Text>
+        <Text style={styles.subtitle}>Welcome back! Ready to study?</Text>
+      </View>
 
-      <TouchableOpacity onPress={() => navigation.navigate("Decks")}>
-        <Text>My Decks</Text>
-      </TouchableOpacity>
+      {/* Navigation buttons */}
+      <View style={styles.buttonArea}>
+        <TouchableOpacity
+          style={styles.createButton}
+          onPress={() => navigation.navigate("CreateCard")}
+        >
+          <Text style={styles.createButtonText}>Create Flashcards</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.decksButton}
+          onPress={() => navigation.navigate("Decks")}
+        >
+          <Text style={styles.decksButtonText}>My Decks</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -58,13 +81,75 @@ export default function HomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 80,
+    backgroundColor: colors.background,
+    alignItems: "center",
     paddingHorizontal: 24,
-    gap: 16,
   },
   centered: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+  },
+  streakBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.streakBg,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: radius.badge,
+    gap: 6,
+    marginBottom: 40,
+  },
+  streakEmoji: {
+    fontSize: 18,
+  },
+  streakText: {
+    fontSize: font.sm,
+    fontWeight: "600",
+    color: colors.streakText,
+  },
+  logoArea: {
+    alignItems: "center",
+    marginBottom: 32,
+  },
+  logoEmoji: {
+    fontSize: 64,
+    marginBottom: 12,
+  },
+  title: {
+    fontSize: font.xl,
+    fontWeight: "700",
+    color: colors.dark,
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: font.md,
+    color: colors.textMuted,
+  },
+  buttonArea: {
+    width: "100%",
+    gap: 12,
+  },
+  createButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 16,
+    borderRadius: radius.button,
+    alignItems: "center",
+  },
+  createButtonText: {
+    color: colors.background,
+    fontSize: font.md,
+    fontWeight: "600",
+  },
+  decksButton: {
+    backgroundColor: colors.dark,
+    paddingVertical: 16,
+    borderRadius: radius.button,
+    alignItems: "center",
+  },
+  decksButtonText: {
+    color: colors.background,
+    fontSize: font.md,
+    fontWeight: "600",
   },
 });
