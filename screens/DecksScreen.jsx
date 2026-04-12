@@ -54,11 +54,6 @@ export default function DecksScreen({ navigation }) {
     );
   };
 
-  // Placeholder, will open rename screen/winow later
-  const handleEditDeck = (deck) => {
-    Alert.alert("Edit Deck");
-  };
-
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -126,12 +121,6 @@ export default function DecksScreen({ navigation }) {
               {/* Edit mode */}
               {editMode ? (
                 <View style={styles.editActions}>
-                  <TouchableOpacity
-                    style={styles.editBtn}
-                    onPress={() => handleEditDeck(item)}
-                  >
-                    <Text style={styles.editBtnText}>✏️</Text>
-                  </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.deleteBtn}
                     onPress={() => handleDeleteDeck(item)}
@@ -243,13 +232,6 @@ const styles = StyleSheet.create({
   editActions: {
     flexDirection: "row",
     gap: 8,
-  },
-  editBtn: {
-    padding: 10,
-    borderRadius: 10,
-  },
-  editBtnText: {
-    fontSize: 16,
   },
   deleteBtn: {
     padding: 10,
