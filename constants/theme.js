@@ -6,6 +6,7 @@ export const colors = {
     primary: '#4361EE',
     dark: '#1a1a2e',
     background: '#fff',
+    backgroundSoft: '#f0f4ff',
     textMuted: '#666',
     streakBg: '#FFF3E0',
     streakText: '#E65100',

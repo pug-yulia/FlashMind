@@ -168,7 +168,7 @@ export default function DeckDetailScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.backgroundSoft,
     paddingTop: 60,
     paddingHorizontal: 24,
   },
