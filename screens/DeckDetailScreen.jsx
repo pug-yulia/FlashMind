@@ -157,7 +157,6 @@ export default function DeckDetailScreen({ navigation, route }) {
               )}
             </View>
           )}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
           contentContainerStyle={styles.listContent}
         />
       )}
@@ -170,7 +169,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.backgroundSoft,
     paddingTop: 60,
-    paddingHorizontal: 24,
   },
   centered: {
     flex: 1,
@@ -179,6 +177,7 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: 20,
+    paddingHorizontal: 24,
   },
   backButtonArea: {
     paddingVertical: 8,
@@ -228,6 +227,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 10,
     marginBottom: 28,
+    marginHorizontal: 24,
     // ios shadow
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -256,6 +256,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 12,
+    paddingHorizontal: 24,
   },
   sectionTitle: {
     fontSize: font.md,
@@ -269,6 +270,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: 24,
+    paddingHorizontal: 20,
   },
   cardRow: {
     flexDirection: "row",
@@ -277,6 +279,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.button,
     paddingVertical: 14,
     paddingHorizontal: 16,
+    marginBottom: 12,
     // ios shadow
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },

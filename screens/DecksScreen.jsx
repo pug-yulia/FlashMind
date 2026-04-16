@@ -133,7 +133,6 @@ export default function DecksScreen({ navigation }) {
               )}
             </TouchableOpacity>
           )}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
           contentContainerStyle={styles.listContent}
         />
       )}
@@ -146,7 +145,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.backgroundSoft,
     paddingTop: 60,
-    paddingHorizontal: 24,
   },
   centered: {
     flex: 1,
@@ -155,6 +153,7 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: 20,
+    paddingHorizontal: 24,
   },
   backButtonArea: {
     paddingVertical: 8,
@@ -188,6 +187,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: "center",
     marginBottom: 24,
+    marginHorizontal: 24,
   },
   newDeckButtonText: {
     color: colors.primary,
@@ -196,6 +196,8 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: 24,
+    paddingHorizontal: 20,
+    paddingTop: 8,
   },
   deckCard: {
     flexDirection: "row",
@@ -204,12 +206,13 @@ const styles = StyleSheet.create({
     borderRadius: radius.button,
     paddingVertical: 20,
     paddingHorizontal: 20,
+    marginBottom: 12,
     // ios shadow
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.12,
     shadowRadius: 6,
-    // android shadow, to be tested
+    // android
     elevation: 3,
   },
   deckInfo: {
