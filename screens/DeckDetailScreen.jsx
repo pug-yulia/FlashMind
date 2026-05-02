@@ -2,23 +2,35 @@ import { useEffect, useState } from "react";
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   FlatList,
   StyleSheet,
   ActivityIndicator,
   Alert,
+  Modal,
 } from "react-native";
 import { useDB } from "../storage/db";
 import { colors, radius, font } from "../constants/theme";
 
 export default function DeckDetailScreen({ navigation, route }) {
   // Deck id and name passed from DecksScreen with navigation params
-  const { deckId, deckName } = route.params;
-  const { getCardsByDeck, deleteCard } = useDB();
+  const { deckId, deckName: initialDeckName } = route.params;
+  const { getCardsByDeck, deleteCard, updateCard, renameDeck } = useDB();
 
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
+
+  // Deck name can change via rename so we keep it in state
+  const [deckName, setDeckName] = useState(initialDeckName);
+
+  // Edit card modal state
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingCard, setEditingCard] = useState(null); // card being edited
+  const [editQuestion, setEditQuestion] = useState("");
+  const [editAnswer, setEditAnswer] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadCards();
@@ -35,14 +47,61 @@ export default function DeckDetailScreen({ navigation, route }) {
     }
   };
 
-  // placeholder
+  // Rename deck
+  // Alert.prompt shows a native iOS text input dialog
+  // Pre filled with current name so user only has to change what they want
+  // ios only
   const handleRenameDeck = () => {
-    Alert.alert("Rename Deck");
+    Alert.prompt(
+      "Rename Deck",
+      "Enter a new name:",
+      async (newName) => {
+        if (!newName?.trim()) return;
+        await renameDeck(deckId, newName.trim());
+        setDeckName(newName.trim()); // update title on screen immediately
+      },
+      "plain-text",
+      deckName, // prefills the input with current deck name
+    );
   };
 
-  // Confirm before deleting a card
+  // Edit card modal
+  // opens pre filled with the card's current question/answer
+  const handleEditCard = (card) => {
+    setEditingCard(card);
+    setEditQuestion(card.question);
+    setEditAnswer(card.answer);
+    setModalVisible(true);
+  };
+
+  const handleSaveCard = async () => {
+    if (!editQuestion.trim() || !editAnswer.trim()) {
+      Alert.alert("Missing fields", "Both question and answer are required.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await updateCard(editingCard.id, editQuestion, editAnswer);
+      await loadCards(); // refresh list with updated card
+      setModalVisible(false);
+    } catch (error) {
+      console.error("updateCard failed:", error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setModalVisible(false);
+    setEditingCard(null);
+    setEditQuestion("");
+    setEditAnswer("");
+  };
+
+  // Delete card
   const handleDeleteCard = (card) => {
-    Alert.alert("Delete this card?", `"${card.question}" \n "${card.answer}"`, [
+    Alert.alert("Delete this card?", `"${card.question}"`, [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete",
@@ -53,11 +112,6 @@ export default function DeckDetailScreen({ navigation, route }) {
         },
       },
     ]);
-  };
-
-  // placeholder
-  const handleEditCard = (card) => {
-    Alert.alert("Edit Card");
   };
 
   if (loading) {
@@ -83,6 +137,7 @@ export default function DeckDetailScreen({ navigation, route }) {
           <View style={styles.titleLeft}>
             <View style={styles.titleNameRow}>
               <Text style={styles.title}>{deckName}</Text>
+              {/* Pencil opens rename prompt */}
               <TouchableOpacity
                 style={styles.renameBtn}
                 onPress={handleRenameDeck}
@@ -95,7 +150,7 @@ export default function DeckDetailScreen({ navigation, route }) {
         </View>
       </View>
 
-      {/* Study button, main point */}
+      {/* Study button — disabled if no cards */}
       <TouchableOpacity
         style={[
           styles.studyButton,
@@ -108,6 +163,14 @@ export default function DeckDetailScreen({ navigation, route }) {
       >
         <Text style={styles.studyIcon}>▶</Text>
         <Text style={styles.studyButtonText}>Study Cards</Text>
+      </TouchableOpacity>
+
+      {/* Add Cards button navigates to CreateCard with this deck pre selected */}
+      <TouchableOpacity
+        style={styles.addCardsButton}
+        onPress={() => navigation.navigate("CreateCard", { deckId, deckName })}
+      >
+        <Text style={styles.addCardsButtonText}>+ Add Cards</Text>
       </TouchableOpacity>
 
       {/* Cards section header with edit toggle */}
@@ -138,7 +201,7 @@ export default function DeckDetailScreen({ navigation, route }) {
                 <Text style={styles.cardAnswer}>{item.answer}</Text>
               </View>
 
-              {/* Edit mode */}
+              {/* Edit mode: pencil + trash per card */}
               {editMode && (
                 <View style={styles.editActions}>
                   <TouchableOpacity
@@ -160,6 +223,76 @@ export default function DeckDetailScreen({ navigation, route }) {
           contentContainerStyle={styles.listContent}
         />
       )}
+
+      {/* Edit card modal
+          Modal sits on top of everything, transparent overlay behind it
+          Pre-filled with the card's current question and answer
+          https://reactnative.dev/docs/modal */}
+      <Modal
+        visible={modalVisible}
+        transparent={true}
+        animationType="slide" // slides up from bottom
+        onRequestClose={handleCloseModal} // Android back button closes modal
+      >
+        {/* Semi transparent backdrop, tapping it closes the modal */}
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={handleCloseModal}
+        >
+          {/* Stop tap from closing when pressing inside the modal content */}
+          <TouchableOpacity
+            style={styles.modalContent}
+            activeOpacity={1}
+            onPress={() => {}}
+          >
+            <Text style={styles.modalTitle}>Edit Card</Text>
+
+            <Text style={styles.modalLabel}>Question</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={editQuestion}
+              onChangeText={setEditQuestion}
+              multiline
+              placeholder="Question..."
+              placeholderTextColor={colors.textMuted}
+            />
+
+            <Text style={styles.modalLabel}>Answer</Text>
+            <TextInput
+              style={[styles.modalInput, styles.modalAnswerInput]}
+              value={editAnswer}
+              onChangeText={setEditAnswer}
+              multiline
+              placeholder="Answer..."
+              placeholderTextColor={colors.textMuted}
+              textAlignVertical="top"
+            />
+
+            {/* Modal action buttons */}
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={handleCloseModal}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.saveButton}
+                onPress={handleSaveCard}
+                disabled={saving}
+              >
+                {saving ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.saveButtonText}>Save</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -226,14 +359,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    marginBottom: 28,
+    marginBottom: 12,
     marginHorizontal: 24,
-    // ios shadow
+    // iOS shadow
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.12,
     shadowRadius: 6,
-    // android
+    // Android
     elevation: 3,
   },
   studyButtonDisabled: {
@@ -250,6 +383,20 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#fff",
     letterSpacing: 0.5,
+  },
+  addCardsButton: {
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: radius.button,
+    paddingVertical: 12,
+    alignItems: "center",
+    marginHorizontal: 24,
+    marginBottom: 28,
+  },
+  addCardsButtonText: {
+    color: colors.primary,
+    fontSize: font.md,
+    fontWeight: "600",
   },
   sectionHeader: {
     flexDirection: "row",
@@ -271,6 +418,7 @@ const styles = StyleSheet.create({
   listContent: {
     paddingBottom: 24,
     paddingHorizontal: 20,
+    paddingTop: 8,
   },
   cardRow: {
     flexDirection: "row",
@@ -280,13 +428,13 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 16,
     marginBottom: 12,
-    // ios shadow
+    // iOS shadow
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    // android
-    elevation: 3,
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    // Android
+    elevation: 2,
   },
   cardContent: {
     flex: 1,
@@ -322,9 +470,6 @@ const styles = StyleSheet.create({
   deleteBtnText: {
     fontSize: 14,
   },
-  separator: {
-    height: 15,
-  },
   emptyState: {
     flex: 1,
     justifyContent: "center",
@@ -340,5 +485,79 @@ const styles = StyleSheet.create({
     fontSize: font.md,
     color: colors.textMuted,
     textAlign: "center",
+  },
+
+  // Modal styles
+
+  // Semi-transparent dark overlay behind the modal
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "flex-end", // modal slides up from bottom
+  },
+  // White modal card that slides up
+  modalContent: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  modalTitle: {
+    fontSize: font.lg,
+    fontWeight: "700",
+    color: colors.dark,
+    marginBottom: 20,
+  },
+  modalLabel: {
+    fontSize: font.md,
+    fontWeight: "600",
+    color: colors.dark,
+    marginBottom: 8,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    borderRadius: radius.button,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: font.md,
+    color: colors.dark,
+    backgroundColor: "#fafafa",
+    marginBottom: 16,
+    minHeight: 48,
+  },
+  modalAnswerInput: {
+    minHeight: 90,
+    textAlignVertical: "top",
+  },
+  modalButtons: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 4,
+  },
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: radius.button,
+    alignItems: "center",
+    backgroundColor: "#f0f0f0",
+  },
+  cancelButtonText: {
+    fontSize: font.md,
+    fontWeight: "600",
+    color: colors.dark,
+  },
+  saveButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: radius.button,
+    alignItems: "center",
+    backgroundColor: colors.primary,
+  },
+  saveButtonText: {
+    fontSize: font.md,
+    fontWeight: "600",
+    color: "#fff",
   },
 });

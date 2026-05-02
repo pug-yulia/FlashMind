@@ -12,12 +12,20 @@ import {
 import { useDB } from "../storage/db";
 import { colors, radius, font } from "../constants/theme";
 
-export default function CreateCardScreen({ navigation }) {
+export default function CreateCardScreen({ navigation, route }) {
   const { getDecks, createDeck, addCard } = useDB();
 
   const [decks, setDecks] = useState([]);
-  const [selectedDeckId, setSelectedDeckId] = useState(null);
-  const [selectedDeckName, setSelectedDeckName] = useState("Choose a deck...");
+  // Read optional params, set when navigating from DeckDetailScreen
+  const { deckId: preselectedDeckId, deckName: preselectedDeckName } =
+    route.params || {};
+
+  const [selectedDeckId, setSelectedDeckId] = useState(
+    preselectedDeckId || null,
+  );
+  const [selectedDeckName, setSelectedDeckName] = useState(
+    preselectedDeckName || "Choose a deck...",
+  );
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
