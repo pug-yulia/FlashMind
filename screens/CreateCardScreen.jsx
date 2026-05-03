@@ -10,12 +10,14 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useDB } from "../storage/db";
+import { generateFlashcards } from "../services/aiService";
 import { colors, radius, font } from "../constants/theme";
 
 export default function CreateCardScreen({ navigation, route }) {
-  const { getDecks, createDeck, addCard } = useDB();
+  const { getDecks, createDeck, addCard, addCards } = useDB();
 
   const [decks, setDecks] = useState([]);
+
   // Read optional params, set when navigating from DeckDetailScreen
   const { deckId: preselectedDeckId, deckName: preselectedDeckName } =
     route.params || {};
@@ -27,11 +29,21 @@ export default function CreateCardScreen({ navigation, route }) {
     preselectedDeckName || "Choose a deck...",
   );
   const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  // Manual card creation state
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // AI generation state
+  const [notes, setNotes] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const [generatedCards, setGeneratedCards] = useState([]);
+  const [savingGenerated, setSavingGenerated] = useState(false);
+
+  const [loading, setLoading] = useState(true);
+
+  // Load existing decks when screen mounts so the dropdown is populated
   useEffect(() => {
     loadDecks();
   }, []);
@@ -49,8 +61,6 @@ export default function CreateCardScreen({ navigation, route }) {
 
   // Creates a new deck via alert prompt and selects it automatically
   // Alert.prompt shows a text input dialog, ios only to note
-  // Creates the new deck, refreshes the list, and auto-selects it
-  // so the user can immediately start adding cards without extra steps
   const handleCreateNewDeck = () => {
     Alert.prompt(
       "New Deck",
@@ -95,8 +105,77 @@ export default function CreateCardScreen({ navigation, route }) {
     }
   };
 
-  // checks all conditions, .trim() to trim whitespaces
+  // All three must be true for save button to activate
+  // .trim() ensures spaces alone don't count as valid input
   const canSave = selectedDeckId && question.trim() && answer.trim();
+
+  // AI generation, shows preview before saving
+  const handleGenerate = async () => {
+    if (!notes.trim()) {
+      Alert.alert("No notes", "Please enter some study notes first.");
+      return;
+    }
+
+    setGenerating(true); // set button to re render
+    setGeneratedCards([]); // clear previous results
+
+    try {
+      const cards = await generateFlashcards(notes);
+      setGeneratedCards(cards); // preview appears
+    } catch (error) {
+      console.error("generateFlashcards failed:", error);
+      Alert.alert(
+        "Generation failed",
+        error.message || "Something went wrong. Please try again.",
+      );
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  // Remove a single card from the preview before saving
+
+  // handleRemoveGeneratedCard removes one card from the preview by its position
+  // Uses the functional update form setGeneratedCards((prev) => ...)
+  // rather than reading generatedCards directly
+  // this guarantees user always operate on the latest state
+  // even they press multiple deletes in quick succession
+  // https://react.dev/reference/react/useState#updating-state-based-on-the-previous-state
+  //
+  // .filter() returns a new array excluding the item at the tapped index
+  // The _ parameter (the card object) is intentionally unused, only the position i matters
+  // i !== index keeps everything except the removed card
+  const handleRemoveGeneratedCard = (index) => {
+    setGeneratedCards((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Save all remaining preview cards to the selected deck in one transaction
+  const handleSaveGenerated = async () => {
+    if (!selectedDeckId) {
+      Alert.alert("No deck selected", "Please select or create a deck first.");
+      return;
+    }
+    if (generatedCards.length === 0) {
+      Alert.alert("No cards", "No cards to save.");
+      return;
+    }
+
+    setSavingGenerated(true);
+    try {
+      await addCards(selectedDeckId, generatedCards);
+      setGeneratedCards([]);
+      setNotes("");
+      Alert.alert(
+        "Saved!",
+        `${generatedCards.length} cards added to "${selectedDeckName}".`,
+      );
+    } catch (error) {
+      console.error("addCards failed:", error);
+      Alert.alert("Save failed", "Something went wrong. Please try again.");
+    } finally {
+      setSavingGenerated(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -107,11 +186,12 @@ export default function CreateCardScreen({ navigation, route }) {
   }
 
   return (
-    // ScrollView used instead of View so content is scrollable when keyboard is open
+    // ScrollView so content is scrollable when keyboard is open
+    // keyboardShouldPersistTaps="handled" keeps dropdown tappable when keyboard is open
     <ScrollView
       style={styles.scrollView}
       contentContainerStyle={styles.container}
-      keyboardShouldPersistTaps="handled" // keeps dropdown tappable when keyboard is open
+      keyboardShouldPersistTaps="handled"
     >
       {/* Header */}
       <View style={styles.header}>
@@ -143,9 +223,18 @@ export default function CreateCardScreen({ navigation, route }) {
           <Text style={styles.dropdownChevron}>{dropdownOpen ? "▲" : "▼"}</Text>
         </TouchableOpacity>
 
-        {/* Dropdown list */}
+        {/* Dropdown list - only rendered when dropdownOpen is true */}
+        {/* Conditional rendering 
+            Uses && short-circuit: false && anything = nothing rendered
+            Component is fully unmounted when closed, not just hidden
+            https://react.dev/learn/conditional-rendering#logical-and-operator- */}
         {dropdownOpen && (
           <View style={styles.dropdownList}>
+            {/* .map() transforms the decks array from the database into an array of JSX elements
+              key={deck.id} uses the stable SQLite id, required so React can track which
+              items changed, were added, or removed during re renders without re rendering
+              the whole list. Advised to never use array index as key for database backed lists
+              https://react.dev/learn/rendering-lists#keeping-list-items-in-order-with-key */}
             {decks.map((deck) => (
               <TouchableOpacity
                 key={deck.id}
@@ -163,7 +252,7 @@ export default function CreateCardScreen({ navigation, route }) {
               </TouchableOpacity>
             ))}
 
-            {/* Create new deck option inside dropdown */}
+            {/* Create new deck option at the bottom of the dropdown */}
             <TouchableOpacity
               style={styles.createDeckRow}
               onPress={handleCreateNewDeck}
@@ -174,7 +263,7 @@ export default function CreateCardScreen({ navigation, route }) {
         )}
       </View>
 
-      {/* Section create a flashcard */}
+      {/* Section create a flashcard manually */}
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Create a Flashcard</Text>
 
@@ -198,7 +287,7 @@ export default function CreateCardScreen({ navigation, route }) {
           multiline
         />
 
-        {/* Disabled until deck selected and both fields filled */}
+        {/* Button is greyed out and disabled until canSave is true */}
         <TouchableOpacity
           style={[styles.addButton, !canSave && styles.addButtonDisabled]}
           onPress={handleAddCard}
@@ -214,22 +303,100 @@ export default function CreateCardScreen({ navigation, route }) {
         <Text style={styles.saveHint}>Saved immediately in selected deck</Text>
       </View>
 
-      {/* divider */}
+      {/* Divider */}
       <Text style={styles.orText}>
         Or generate flashcards from notes using AI
       </Text>
 
-      {/* Section generate from notes (placeholder) */}
-      <TouchableOpacity
-        style={styles.card}
-        onPress={() => navigation.navigate("Generate")}
-        activeOpacity={0.8}
-      >
+      {/* Section AI generation */}
+      <View style={styles.card}>
         <Text style={styles.sectionTitle}>Generate Flashcards from Notes</Text>
-        <Text style={styles.generateSubtext}>
-          Paste your study notes and let AI create flashcards automatically.
+        <Text style={styles.sectionSubtitle}>
+          Paste your study notes below. The more detail you provide, the better
+          the flashcards.
         </Text>
-      </TouchableOpacity>
+
+        {/* Notes input */}
+        <TextInput
+          style={styles.notesInput}
+          placeholder={
+            "Paste or type your study notes here...\n\nExample:\n- Photosynthesis converts light energy to chemical energy\n- The mitochondria is the powerhouse of the cell"
+          }
+          placeholderTextColor={colors.textMuted}
+          value={notes}
+          onChangeText={setNotes}
+          multiline
+          textAlignVertical="top"
+        />
+
+        {/* Generate button */}
+        <TouchableOpacity
+          style={[
+            styles.generateButton,
+            (!notes.trim() || generating) && styles.generateButtonDisabled,
+          ]}
+          onPress={handleGenerate}
+          disabled={!notes.trim() || generating}
+        >
+          {generating ? (
+            <View style={styles.generatingRow}>
+              <ActivityIndicator color="#fff" size="small" />
+              <Text style={styles.generateButtonText}>Generating...</Text>
+            </View>
+          ) : (
+            <Text style={styles.generateButtonText}>
+              ✨ Generate Flashcards
+            </Text>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* Preview generated cards, shown after generation */}
+      {generatedCards.length > 0 && (
+        <View style={styles.card}>
+          <View style={styles.previewHeader}>
+            <Text style={styles.sectionTitle}>
+              Preview ({generatedCards.length} cards)
+            </Text>
+            <Text style={styles.previewHint}>Tap 🗑️ to remove</Text>
+          </View>
+
+          {/* Map instead of FlatList (nested FlatList inside ScrollView causes issues) */}
+          {/* key={index} becasue generated cards are not in database yet */}
+          {generatedCards.map((card, index) => (
+            <View key={index} style={styles.previewCard}>
+              <View style={styles.previewCardContent}>
+                <Text style={styles.previewQuestion}>{card.question}</Text>
+                <Text style={styles.previewAnswer}>{card.answer}</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.removeBtn}
+                onPress={() => handleRemoveGeneratedCard(index)}
+              >
+                <Text style={styles.removeBtnText}>🗑️</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+
+          {/* Save all generated cards to selected deck */}
+          <TouchableOpacity
+            style={[
+              styles.saveGeneratedButton,
+              !selectedDeckId && styles.saveGeneratedButtonDisabled,
+            ]}
+            onPress={handleSaveGenerated}
+            disabled={!selectedDeckId || savingGenerated}
+          >
+            {savingGenerated ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.saveGeneratedButtonText}>
+                Save {generatedCards.length} Cards to "{selectedDeckName}"
+              </Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Tip box */}
       <View style={styles.tipBox}>
@@ -246,7 +413,7 @@ export default function CreateCardScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
-    backgroundColor: "#f0f4ff",
+    backgroundColor: colors.backgroundSoft,
   },
   container: {
     paddingTop: 60,
@@ -270,24 +437,31 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: "500",
   },
+  // White cards pop against the soft background
   card: {
     backgroundColor: "#fff",
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
-    // ios shadow
+    // iOS shadow
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.07,
     shadowRadius: 6,
-    // android
+    // Android
     elevation: 2,
   },
   sectionTitle: {
     fontSize: font.lg,
     fontWeight: "700",
     color: colors.dark,
+    marginBottom: 8,
+  },
+  sectionSubtitle: {
+    fontSize: font.sm,
+    color: colors.textMuted,
     marginBottom: 16,
+    lineHeight: 20,
   },
   dropdown: {
     flexDirection: "row",
@@ -394,10 +568,90 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     fontWeight: "500",
   },
-  generateSubtext: {
+  notesInput: {
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    borderRadius: radius.button,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     fontSize: font.md,
+    color: colors.dark,
+    backgroundColor: "#fafafa",
+    marginBottom: 16,
+    minHeight: 160,
+    textAlignVertical: "top",
+  },
+  generateButton: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.button,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  generateButtonDisabled: {
+    backgroundColor: "#b0bec5",
+  },
+  generateButtonText: {
+    color: "#fff",
+    fontSize: font.md,
+    fontWeight: "600",
+  },
+  generatingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  previewHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  previewHint: {
+    fontSize: font.sm,
     color: colors.textMuted,
-    lineHeight: 22,
+  },
+  previewCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.backgroundSoft,
+    borderRadius: radius.button,
+    padding: 14,
+    marginBottom: 10,
+  },
+  previewCardContent: {
+    flex: 1,
+  },
+  previewQuestion: {
+    fontSize: font.md,
+    fontWeight: "600",
+    color: colors.dark,
+    marginBottom: 4,
+  },
+  previewAnswer: {
+    fontSize: font.sm,
+    color: colors.textMuted,
+  },
+  removeBtn: {
+    padding: 8,
+    marginLeft: 8,
+  },
+  removeBtnText: {
+    fontSize: 16,
+  },
+  saveGeneratedButton: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.button,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginTop: 8,
+  },
+  saveGeneratedButtonDisabled: {
+    backgroundColor: "#b0bec5",
+  },
+  saveGeneratedButtonText: {
+    color: "#fff",
+    fontSize: font.md,
+    fontWeight: "600",
   },
   tipBox: {
     backgroundColor: "#fffde7",

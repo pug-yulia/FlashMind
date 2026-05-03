@@ -24,7 +24,6 @@ export default function AppNavigator() {
         <Stack.Screen name="DeckDetail" component={DeckDetailScreen} />
         <Stack.Screen name="CreateCard" component={CreateCardScreen} />
         <Stack.Screen name="Review" component={ReviewScreen} />
-        <Stack.Screen name="Generate" component={GenerateScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
