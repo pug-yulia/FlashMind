@@ -3,6 +3,12 @@
 A mobile flashcard study app built with React Native (Expo) for a Mobile Programming course project. FlashMind lets users create, organize, and review flashcards — with AI-powered card generation from study notes.
 
 ---
+## Demo
+
+<img width="648" height="1406" alt="app-demo" src="https://github.com/user-attachments/assets/b51cad12-a0c8-4cea-9881-522aa5f709ee" />
+
+
+---
 
 ## Features
 
