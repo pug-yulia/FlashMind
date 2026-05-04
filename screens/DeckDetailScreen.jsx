@@ -12,6 +12,8 @@ import {
 } from "react-native";
 import { useDB } from "../storage/db";
 import { colors, radius, font } from "../constants/theme";
+import { Ionicons } from "@expo/vector-icons";
+import { KeyboardAvoidingView, Platform } from "react-native";
 
 export default function DeckDetailScreen({ navigation, route }) {
   // Deck id and name passed from DecksScreen with navigation params
@@ -142,7 +144,20 @@ export default function DeckDetailScreen({ navigation, route }) {
                 style={styles.renameBtn}
                 onPress={handleRenameDeck}
               >
-                <Text style={styles.renameBtnText}>✏️</Text>
+                <View
+                  style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+                >
+                  <Ionicons name="pencil" size={16} color={colors.primary} />
+                  <Text
+                    style={{
+                      fontSize: font.sm,
+                      color: colors.primary,
+                      fontWeight: "500",
+                    }}
+                  >
+                    Rename
+                  </Text>
+                </View>
               </TouchableOpacity>
             </View>
             <Text style={styles.cardCount}>{cards.length} cards</Text>
@@ -178,9 +193,16 @@ export default function DeckDetailScreen({ navigation, route }) {
         <Text style={styles.sectionTitle}>Cards</Text>
         {cards.length > 0 && (
           <TouchableOpacity onPress={() => setEditMode(!editMode)}>
-            <Text style={styles.editToggle}>
-              {editMode ? "Done" : "✏️ Edit"}
-            </Text>
+            {editMode ? (
+              <Text style={styles.editToggle}>Done</Text>
+            ) : (
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+              >
+                <Ionicons name="pencil" size={16} color={colors.primary} />
+                <Text style={styles.editToggle}>Edit</Text>
+              </View>
+            )}
           </TouchableOpacity>
         )}
       </View>
@@ -208,13 +230,13 @@ export default function DeckDetailScreen({ navigation, route }) {
                     style={styles.editBtn}
                     onPress={() => handleEditCard(item)}
                   >
-                    <Text style={styles.editBtnText}>✏️</Text>
+                    <Ionicons name="pencil" size={16} color={colors.primary} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.deleteBtn}
                     onPress={() => handleDeleteCard(item)}
                   >
-                    <Text style={styles.deleteBtnText}>🗑️</Text>
+                    <Ionicons name="trash-outline" size={16} color="#ef4444" />
                   </TouchableOpacity>
                 </View>
               )}
@@ -234,64 +256,70 @@ export default function DeckDetailScreen({ navigation, route }) {
         animationType="slide" // slides up from bottom
         onRequestClose={handleCloseModal} // Android back button closes modal
       >
-        {/* Semi transparent backdrop, tapping it closes the modal */}
-        <TouchableOpacity
-          style={styles.modalBackdrop}
-          activeOpacity={1}
-          onPress={handleCloseModal}
+        {/* So that when keyboard opens, the modal is pushed up and not covered */}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ flex: 1 }}
         >
-          {/* Stop tap from closing when pressing inside the modal content */}
+          {/* Semi transparent backdrop, tapping it closes the modal */}
           <TouchableOpacity
-            style={styles.modalContent}
+            style={styles.modalBackdrop}
             activeOpacity={1}
-            onPress={() => {}}
+            onPress={handleCloseModal}
           >
-            <Text style={styles.modalTitle}>Edit Card</Text>
+            {/* Stop tap from closing when pressing inside the modal content */}
+            <TouchableOpacity
+              style={styles.modalContent}
+              activeOpacity={1}
+              onPress={() => {}}
+            >
+              <Text style={styles.modalTitle}>Edit Card</Text>
 
-            <Text style={styles.modalLabel}>Question</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={editQuestion}
-              onChangeText={setEditQuestion}
-              multiline
-              placeholder="Question..."
-              placeholderTextColor={colors.textMuted}
-            />
+              <Text style={styles.modalLabel}>Question</Text>
+              <TextInput
+                style={styles.modalInput}
+                value={editQuestion}
+                onChangeText={setEditQuestion}
+                multiline
+                placeholder="Question..."
+                placeholderTextColor={colors.textMuted}
+              />
 
-            <Text style={styles.modalLabel}>Answer</Text>
-            <TextInput
-              style={[styles.modalInput, styles.modalAnswerInput]}
-              value={editAnswer}
-              onChangeText={setEditAnswer}
-              multiline
-              placeholder="Answer..."
-              placeholderTextColor={colors.textMuted}
-              textAlignVertical="top"
-            />
+              <Text style={styles.modalLabel}>Answer</Text>
+              <TextInput
+                style={[styles.modalInput, styles.modalAnswerInput]}
+                value={editAnswer}
+                onChangeText={setEditAnswer}
+                multiline
+                placeholder="Answer..."
+                placeholderTextColor={colors.textMuted}
+                textAlignVertical="top"
+              />
 
-            {/* Modal action buttons */}
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={handleCloseModal}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
+              {/* Modal action buttons */}
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={handleCloseModal}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
 
-              <TouchableOpacity
-                style={styles.saveButton}
-                onPress={handleSaveCard}
-                disabled={saving}
-              >
-                {saving ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.saveButtonText}>Save</Text>
-                )}
-              </TouchableOpacity>
-            </View>
+                <TouchableOpacity
+                  style={styles.saveButton}
+                  onPress={handleSaveCard}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.saveButtonText}>Save</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
           </TouchableOpacity>
-        </TouchableOpacity>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

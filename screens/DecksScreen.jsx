@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { useDB } from "../storage/db";
 import { colors, radius, font } from "../constants/theme";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function DecksScreen({ navigation }) {
   const { getDecks, deleteDeck } = useDB();
@@ -77,9 +78,14 @@ export default function DecksScreen({ navigation }) {
           {/* Edit toggle */}
           {decks.length > 0 && (
             <TouchableOpacity onPress={() => setEditMode(!editMode)}>
-              <Text style={styles.editToggle}>
-                {editMode ? "Done" : "✏️ Edit"}
-              </Text>
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+              >
+                <Ionicons name="pencil" size={16} color={colors.primary} />
+                <Text style={styles.editToggle}>
+                  {editMode ? "Done" : "Edit"}
+                </Text>
+              </View>
             </TouchableOpacity>
           )}
         </View>
@@ -125,7 +131,7 @@ export default function DecksScreen({ navigation }) {
                     style={styles.deleteBtn}
                     onPress={() => handleDeleteDeck(item)}
                   >
-                    <Text style={styles.deleteBtnText}>🗑️</Text>
+                    <Ionicons name="trash-outline" size={18} color="#ef4444" />
                   </TouchableOpacity>
                 </View>
               ) : (

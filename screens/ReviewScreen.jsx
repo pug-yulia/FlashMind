@@ -7,6 +7,7 @@ import {
   Animated,
   Easing,
   Dimensions,
+  ImageBackground,
 } from "react-native";
 import { useDB } from "../storage/db";
 import { colors, radius, font } from "../constants/theme";
@@ -147,93 +148,101 @@ export default function ReviewScreen({ navigation, route }) {
   }
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
+    <ImageBackground
+      source={require("../assets/review-bg.png")}
+      style={{ flex: 1 }}
+      resizeMode="cover"
+    >
+      <View style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButtonArea}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.backButton}>← Back</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Progress counter */}
+        <Text style={styles.progress}>
+          {currentIndex + 1} / {cards.length}
+        </Text>
+
+        {/* Flip card (tap anywhere to flip) */}
         <TouchableOpacity
-          style={styles.backButtonArea}
-          onPress={() => navigation.goBack()}
+          activeOpacity={1}
+          onPress={flipCard}
+          style={styles.cardContainer}
         >
-          <Text style={styles.backButton}>← Back</Text>
+          {/* Front face */}
+          <Animated.View
+            style={[
+              styles.card,
+              styles.cardFront,
+              { transform: [{ rotateY: frontRotate }] },
+            ]}
+          >
+            <Text style={styles.cardText}>{frontText}</Text>
+          </Animated.View>
+
+          {/* Back face, starts rotated away, comes around on flip */}
+          <Animated.View
+            style={[
+              styles.card,
+              styles.cardBack,
+              { transform: [{ rotateY: backRotate }] },
+            ]}
+          >
+            <Text style={styles.cardText}>{backText}</Text>
+          </Animated.View>
+        </TouchableOpacity>
+
+        {/* Tap to flip hint */}
+        <Text style={styles.hint}>Tap card to flip</Text>
+
+        {/* Previous / Next buttons */}
+        <View style={styles.navButtons}>
+          <TouchableOpacity
+            style={[
+              styles.navButton,
+              currentIndex === 0 && styles.navButtonDisabled,
+            ]}
+            onPress={goPrevious}
+            disabled={currentIndex === 0}
+          >
+            <Text style={styles.navButtonText}>Previous</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.navButton} onPress={goNext}>
+            <Text style={styles.navButtonText}>
+              {currentIndex === cards.length - 1 ? "Finish" : "Next"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Reverse mode toggle */}
+        <TouchableOpacity
+          style={styles.reverseToggle}
+          onPress={() => {
+            resetFlip();
+            setReverseMode(!reverseMode);
+          }}
+        >
+          <View
+            style={[styles.checkbox, reverseMode && styles.checkboxActive]}
+          />
+          <Text style={styles.reverseLabel}>Reverse Mode</Text>
         </TouchableOpacity>
       </View>
-
-      {/* Progress counter */}
-      <Text style={styles.progress}>
-        {currentIndex + 1} / {cards.length}
-      </Text>
-
-      {/* Flip card (tap anywhere to flip) */}
-      <TouchableOpacity
-        activeOpacity={1}
-        onPress={flipCard}
-        style={styles.cardContainer}
-      >
-        {/* Front face */}
-        <Animated.View
-          style={[
-            styles.card,
-            styles.cardFront,
-            { transform: [{ rotateY: frontRotate }] },
-          ]}
-        >
-          <Text style={styles.cardText}>{frontText}</Text>
-        </Animated.View>
-
-        {/* Back face, starts rotated away, comes around on flip */}
-        <Animated.View
-          style={[
-            styles.card,
-            styles.cardBack,
-            { transform: [{ rotateY: backRotate }] },
-          ]}
-        >
-          <Text style={styles.cardText}>{backText}</Text>
-        </Animated.View>
-      </TouchableOpacity>
-
-      {/* Tap to flip hint */}
-      <Text style={styles.hint}>Tap card to flip</Text>
-
-      {/* Previous / Next buttons */}
-      <View style={styles.navButtons}>
-        <TouchableOpacity
-          style={[
-            styles.navButton,
-            currentIndex === 0 && styles.navButtonDisabled,
-          ]}
-          onPress={goPrevious}
-          disabled={currentIndex === 0}
-        >
-          <Text style={styles.navButtonText}>Previous</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.navButton} onPress={goNext}>
-          <Text style={styles.navButtonText}>
-            {currentIndex === cards.length - 1 ? "Finish" : "Next"}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Reverse mode toggle */}
-      <TouchableOpacity
-        style={styles.reverseToggle}
-        onPress={() => {
-          resetFlip();
-          setReverseMode(!reverseMode);
-        }}
-      >
-        <View style={[styles.checkbox, reverseMode && styles.checkboxActive]} />
-        <Text style={styles.reverseLabel}>Reverse Mode</Text>
-      </TouchableOpacity>
-    </View>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    //backgroundColor: colors.background,
     paddingTop: 60,
     paddingHorizontal: 24,
     alignItems: "center",

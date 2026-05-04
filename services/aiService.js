@@ -29,6 +29,7 @@ export async function generateFlashcards(notes) {
         },
         body: JSON.stringify({
             model: "deepseek-chat",
+            max_tokens: 4000,
             messages: [
                 {
                     // instructions to the model
@@ -42,8 +43,10 @@ export async function generateFlashcards(notes) {
                     role: "user",
                     content: `Convert these study notes into flashcards. Return ONLY a JSON array like this: [{"question":"...","answer":"..."}]
 
-Generate between 5 and 15 flashcards depending on content length.
+Generate between 5 and 20 flashcards depending on content length.
 Keep questions clear and concise. Keep answers brief but complete.
+For vocabulary or translation notes, format as: question = the term in the source language, answer = the translation. Keep it concise.
+For conceptual/theory notes, generate questions that test understanding, not just memorization.
 
 Study notes:
 ${notes}`,

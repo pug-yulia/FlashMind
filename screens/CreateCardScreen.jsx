@@ -12,6 +12,7 @@ import {
 import { useDB } from "../storage/db";
 import { generateFlashcards } from "../services/aiService";
 import { colors, radius, font } from "../constants/theme";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function CreateCardScreen({ navigation, route }) {
   const { getDecks, createDeck, addCard, addCards } = useDB();
@@ -358,7 +359,16 @@ export default function CreateCardScreen({ navigation, route }) {
             <Text style={styles.sectionTitle}>
               Preview ({generatedCards.length} cards)
             </Text>
-            <Text style={styles.previewHint}>Tap 🗑️ to remove</Text>
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+            >
+              <Ionicons
+                name="trash-outline"
+                size={14}
+                color={colors.textMuted}
+              />
+              <Text style={styles.previewHint}>Tap to remove</Text>
+            </View>
           </View>
 
           {/* Map instead of FlatList (nested FlatList inside ScrollView causes issues) */}
@@ -373,7 +383,7 @@ export default function CreateCardScreen({ navigation, route }) {
                 style={styles.removeBtn}
                 onPress={() => handleRemoveGeneratedCard(index)}
               >
-                <Text style={styles.removeBtnText}>🗑️</Text>
+                <Ionicons name="trash-outline" size={18} color="#ef4444" />
               </TouchableOpacity>
             </View>
           ))}
